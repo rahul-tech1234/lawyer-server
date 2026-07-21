@@ -112,20 +112,20 @@ async function run() {
                 console.log(error);
             }
         });
-        app.delete("/api/lawyer/:id", async (req, res) => {
-            try {
-                const id = req.params.id;
+        // app.delete("/api/lawyer/:id", async (req, res) => {
+        //     try {
+        //         const id = req.params.id;
 
-                const dltData = req.body;
-                const result = await layerCollection.deleteOne({
-                    _id: new ObjectId(id),
-                });
+        //         const dltData = req.body;
+        //         const result = await layerCollection.deleteOne({
+        //             _id: new ObjectId(id),
+        //         });
 
-                res.json(result);
-            } catch (error) {
-                console.log(error);
-            }
-        });
+        //         res.json(result);
+        //     } catch (error) {
+        //         console.log(error);
+        //     }
+        // });
         // browse all lawyer service
         app.get("/api/allService", async (req, res) => {
             const search = req.query.search;
