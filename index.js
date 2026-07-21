@@ -73,14 +73,24 @@ async function run() {
         app.get("/api/lawyer/:email", async (req, res) => {
             try {
                 const email = req.params.email;
-                const service = req.body;
                 const result = await layerCollection
                     .find({ lawyerEmail: email })
                     .toArray();
                 res.json(result);
             } catch (error) {}
         });
-
+        app.get("/api/lawyers/:id", async (req, res) => {
+            try {
+                const id = req.params.id;
+           
+                const result = await layerCollection.findOne({
+                    _id: new ObjectId(id),
+                });
+                res.json(result);
+            } catch (error) {
+                console.log(error);
+            }
+        });
         app.post("/api/lawyer", async (req, res) => {
             try {
                 const service = req.body;
@@ -102,8 +112,8 @@ async function run() {
         app.patch("/api/lawyer/:id", async (req, res) => {
             try {
                 const id = req.params.id;
-                console.log("id", id);
-                const data = res.body;
+
+                const data = req.body;
                 const result = await layerCollection.updateOne(
                     { _id: new ObjectId(id) },
                     { $set: { ...data } },
@@ -112,41 +122,36 @@ async function run() {
                 console.log(error);
             }
         });
-        // app.delete("/api/lawyer/:id", async (req, res) => {
-        //     try {
-        //         const id = req.params.id;
+        app.delete("/api/lawyer/:id", async (req, res) => {
+            try {
+                const id = req.params.id;
+                const dltData = req.body;
+                const result = await layerCollection.deleteOne({
+                    _id: new ObjectId(id),
+                });
 
-        //         const dltData = req.body;
-        //         const result = await layerCollection.deleteOne({
-        //             _id: new ObjectId(id),
-        //         });
-
-        //         res.json(result);
-        //     } catch (error) {
-        //         console.log(error);
-        //     }
-        // });
+                res.json(result);
+            } catch (error) {
+                console.log(error);
+            }
+        });
         // browse all lawyer service
-        app.get("/api/allService", async (req, res) => {
-            const search = req.query.search;
-            const category = req.query.category;
-            const serviceName = req.query.serviceName;
-            const query = {};
-            if (search) {
-                query.title = {
-                    $regex: search,
-                    $option: "i",
-                };
+        app.get("/api/lawyers", async (req, res) => {
+            try {
+                const category = req.query.category;
+                const query = {};
+
+                if (category) {
+                    query.category = category;
+                    //  query.category={$in:category.split(",")}
+                }
+
+                const cursor = await layerCollection.find(query);
+                const result = await cursor.toArray();
+                res.json(result);
+            } catch (error) {
+                console.log(error);
             }
-            if (category) {
-                // query.category=category;
-                query.category={$in:category.split(",")}
-            }
-            if (serviceName) {
-                query.serviceName=serviceName;
-            }
-            const cursor = await layerCollection.find();
-            const result = await cursor.toArray();
         });
 
         console.log(
