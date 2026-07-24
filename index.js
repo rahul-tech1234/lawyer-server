@@ -28,6 +28,7 @@ async function run() {
         const usersCollection = db.collection("user");
         const layerCollection = db.collection("lawyers");
         const layerProfileCollection = db.collection("lawyerProfiles");
+        const hiringCollection = db.collection("hiring");
         //    profile create update get
         app.get("/api/lawyerProfile/:email", async (req, res) => {
             try {
@@ -82,7 +83,7 @@ async function run() {
         app.get("/api/lawyers/:id", async (req, res) => {
             try {
                 const id = req.params.id;
-           
+
                 const result = await layerCollection.findOne({
                     _id: new ObjectId(id),
                 });
@@ -112,12 +113,15 @@ async function run() {
         app.patch("/api/lawyer/:id", async (req, res) => {
             try {
                 const id = req.params.id;
+                console.log(id);
 
                 const data = req.body;
+                console.log(data);
                 const result = await layerCollection.updateOne(
                     { _id: new ObjectId(id) },
                     { $set: { ...data } },
                 );
+                res.json(result);
             } catch (error) {
                 console.log(error);
             }
@@ -139,8 +143,11 @@ async function run() {
         app.get("/api/lawyers", async (req, res) => {
             try {
                 const category = req.query.category;
+                const search = req.query.search;
                 const query = {};
-
+                if (search) {
+                    query.title = { $regex: search, $options: "i" };
+                }
                 if (category) {
                     query.category = category;
                     //  query.category={$in:category.split(",")}
@@ -153,6 +160,99 @@ async function run() {
                 console.log(error);
             }
         });
+        app.patch("/api/users/update-premium/:email", async (req, res) => {
+            const email = req.params.email;
+
+            const result = await usersCollection.updateOne(
+                { email },
+                { $set: { isPremium: true } },
+            );
+            res.json(result);
+        });
+        app.get("/api/hirings/lawyer/:email", async (req, res) => {
+            const email = req.params.email;
+            // console.log(req.params);
+            const result = await hiringCollection
+                .find({ serviceEmail: email })
+                .toArray();
+            res.json(result);
+        });
+        app.get("/api/hirings/client/:email", async (req, res) => {
+            const email = req.params.email;
+
+            const result = await hiringCollection
+                .find({ clientEmail: email })
+                .toArray();
+
+            res.json(result);
+        });
+        app.post("/api/hirings", async (req, res) => {
+            const {
+                clientEmail,
+                clientId,
+                serviceEmail,
+                serviceId,
+                serviceTitle,
+                consultationFee,
+                category,
+                transactionId,
+            } = req.body;
+            const hireingData = {
+                clientEmail,
+                clientId,
+                serviceEmail,
+                serviceId,
+                serviceTitle,
+                consultationFee,
+                transactionId,
+                category,
+                serviceTitle,
+                status: "pending",
+                paymentStatus: "unpaid",
+                hiringDate: new Date(),
+            };
+
+            //  const isHiringExist = await layerCollection.updateOne({
+            //      serviceId,
+            //  }{$set{status}});
+            // if (isHiringExist) {
+            //     return res.status(409).send({ message: "Already Paid" });
+            // }
+
+            const result = await hiringCollection.insertOne({ ...hireingData });
+            //console.log(result);
+            res.json(result);
+            // const lawyerRes = await layerCollection.updateOne(
+            //     { _id: new ObjectId(serviceId) },
+            //     { $set: { status: "accepet" } },
+            // );
+            // console.log({ lawyerRes });
+            // res.json({ success: true, message: "Lawyer hire successfull" });
+        });
+
+        app.patch("/api/hirings/accept/:id", async (req, res) => {
+            const id = req.params.id;
+
+            console.log("id", id);
+            const data = req.body;
+            const result = await hiringCollection.updateOne(
+                { _id: new ObjectId(id) },
+                { $set: { ...data } },
+            );
+            res.json(result);
+        });
+        app.patch("/api/hirings/reject/:id", async (req, res) => {
+            const id = req.params.id;
+
+            console.log("id", id);
+            const data = req.body;
+            const result = await hiringCollection.updateOne(
+                { _id: new ObjectId(id) },
+                { $set: { ...data } },
+            );
+            res.json(result);
+        });
+
 
         console.log(
             "Pinged your deployment. You successfully connected to MongoDB!",
