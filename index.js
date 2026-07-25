@@ -113,10 +113,10 @@ async function run() {
         app.patch("/api/lawyer/:id", async (req, res) => {
             try {
                 const id = req.params.id;
-                console.log(id);
+                // console.log(id);
 
                 const data = req.body;
-                console.log(data);
+                // console.log(data);
                 const result = await layerCollection.updateOne(
                     { _id: new ObjectId(id) },
                     { $set: { ...data } },
@@ -142,6 +142,11 @@ async function run() {
         // browse all lawyer service
         app.get("/api/lawyers", async (req, res) => {
             try {
+                const limit = Number(req.query.limiy) || 5;
+                const page = Number(req.query.page) || 1;
+                const total_data = await layerCollection.countDocuments();
+                const total_page = Math.ceil(total_data / limit);
+                const skip = (page - 1) * limit;
                 const category = req.query.category;
                 const search = req.query.search;
                 const query = {};
@@ -153,9 +158,19 @@ async function run() {
                     //  query.category={$in:category.split(",")}
                 }
 
-                const cursor = await layerCollection.find(query);
-                const result = await cursor.toArray();
-                res.json(result);
+                const cursor = await layerCollection
+                    .find(query)
+                    .skip(skip)
+                    .limit(limit);
+                const data = await cursor.toArray();
+                res.json({
+                    limit,
+                    skip,
+                    page,
+                    total_page,
+                    total_data,
+                    data,
+                });
             } catch (error) {
                 console.log(error);
             }
@@ -179,13 +194,35 @@ async function run() {
         });
         app.get("/api/hirings/client/:email", async (req, res) => {
             const email = req.params.email;
-
+            console.log("email:", email);
             const result = await hiringCollection
                 .find({ clientEmail: email })
                 .toArray();
 
             res.json(result);
         });
+        app.patch("/api/cmt/hireing/:id", async (req, res) => {
+            const id = req.params.id;
+            //console.log(id);
+            const data = req.body;
+            //console.log(data);
+            const result = await layerCollection.updateOne(
+                { _id: new ObjectId(id) },
+                { $set: { ...data } },
+            );
+            //console.log(result);
+            res.json(result);
+        });
+        // app.get("/api/get/cmt/hireing/:id", async (req, res) => {
+        //     const id = req.params.id;
+        //     console.log(id);
+        //     const result = await layerCollection.findOne({
+        //         _id: new ObjectId(id),
+        //     });
+        //     console.log(result);
+        //     res.json(result);
+        // });
+
         app.post("/api/hirings", async (req, res) => {
             const {
                 clientEmail,
@@ -197,6 +234,7 @@ async function run() {
                 category,
                 transactionId,
             } = req.body;
+            console.log(req.body);
             const hireingData = {
                 clientEmail,
                 clientId,
@@ -212,14 +250,19 @@ async function run() {
                 hiringDate: new Date(),
             };
 
-            //  const isHiringExist = await layerCollection.updateOne({
-            //      serviceId,
-            //  }{$set{status}});
-            // if (isHiringExist) {
-            //     return res.status(409).send({ message: "Already Paid" });
-            // }
+            const isHiringExist = await layerCollection.findOne({
+                serviceId,
+            });
+            //{$set{status}}
+            if (isHiringExist) {
+                return res.status(409).send({ message: "Already Paid" });
+            }
 
             const result = await hiringCollection.insertOne({ ...hireingData });
+            await usersCollection.updateOne(
+                { id: clientId },
+                { $set: { isPremium: true } },
+            );
             //console.log(result);
             res.json(result);
             // const lawyerRes = await layerCollection.updateOne(
@@ -252,7 +295,6 @@ async function run() {
             );
             res.json(result);
         });
-
 
         console.log(
             "Pinged your deployment. You successfully connected to MongoDB!",
