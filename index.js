@@ -175,6 +175,15 @@ async function run() {
                 console.log(error);
             }
         });
+        app.patch("/api/updateLawyerStatus/:id", async (req, res) => {
+            const id = req.params.id;
+            const data = req.body;
+            const result = await layerCollection.updateOne(
+                { _id: new ObjectId(id) },
+                { ...data },
+            );
+            res.json(result);
+        });
         app.patch("/api/users/update-premium/:email", async (req, res) => {
             const email = req.params.email;
 
@@ -194,7 +203,7 @@ async function run() {
         });
         app.get("/api/hirings/client/:email", async (req, res) => {
             const email = req.params.email;
-            console.log("email:", email);
+            //console.log("email:", email);
             const result = await hiringCollection
                 .find({ clientEmail: email })
                 .toArray();
@@ -203,9 +212,9 @@ async function run() {
         });
         app.patch("/api/cmt/hireing/:id", async (req, res) => {
             const id = req.params.id;
-            //console.log(id);
+            console.log(id);
             const data = req.body;
-            //console.log(data);
+            //console.log(data,"data");
             const result = await layerCollection.updateOne(
                 { _id: new ObjectId(id) },
                 { $set: { ...data } },
@@ -213,15 +222,56 @@ async function run() {
             //console.log(result);
             res.json(result);
         });
-        // app.get("/api/get/cmt/hireing/:id", async (req, res) => {
-        //     const id = req.params.id;
-        //     console.log(id);
-        //     const result = await layerCollection.findOne({
-        //         _id: new ObjectId(id),
-        //     });
-        //     console.log(result);
-        //     res.json(result);
-        // });
+
+        app.get("/api/all/cmt/hireing/:email", async (req, res) => {
+            const email = req.params.email;
+            //   console.log(id);
+            const result = await layerCollection
+                .find({
+                    clientEmail: email,
+                })
+                .toArray();
+            console.log("result:", result);
+            res.json(result);
+        });
+        app.patch("/api/cmt/delete/:id", async (req, res) => {
+            const { id } = req.params;
+            //console.log("delete Cmt", id);
+            const result = await layerCollection.updateOne(
+                { _id: new ObjectId(id) },
+                {
+                    $unset: {
+                        cmt: 1,
+                        clientEmail: 1,
+                    },
+                },
+            );
+            console.log(result);
+            res.json(result);
+        });
+        app.patch("/api/cmt/update/:id", async (req, res) => {
+            const id = req.params.id;
+            const data = req.body;
+            console.log("delete Cmt", id);
+            const result = await layerCollection.updateOne(
+                { _id: new ObjectId(id) },
+                {
+                    $set: { ...data },
+                },
+            );
+            console.log(result);
+            res.json(result);
+        });
+
+        app.get("/api/get/cmt/hireing/:id", async (req, res) => {
+            const id = req.params.id;
+            //console.log(id);
+            const result = await layerCollection.findOne({
+                _id: new ObjectId(id),
+            });
+            //console.log(result);
+            res.json(result);
+        });
 
         app.post("/api/hirings", async (req, res) => {
             const {
@@ -234,7 +284,7 @@ async function run() {
                 category,
                 transactionId,
             } = req.body;
-            console.log(req.body);
+            //console.log(req.body);
             const hireingData = {
                 clientEmail,
                 clientId,
@@ -293,6 +343,17 @@ async function run() {
                 { _id: new ObjectId(id) },
                 { $set: { ...data } },
             );
+            res.json(result);
+        });
+        app.patch("/api/user/:id", async (req, res) => {
+            const id = req.params.id;
+            console.log(id);
+            const data = req.body;
+            const result = await usersCollection.updateOne(
+                { _id: new ObjectId(id) },
+                { $set: { ...data } },
+            );
+            console.log(result);
             res.json(result);
         });
 
