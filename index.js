@@ -409,7 +409,7 @@ async function run() {
         });
         app.delete("/api/delete/user/:id", async (req, res) => {
             const id = req.params.id;
-            console.log("id", id);
+            //  console.log("id", id);
             const result = await usersCollection.deleteOne({
                 _id: new ObjectId(id),
             });
@@ -423,7 +423,15 @@ async function run() {
                 { _id: new ObjectId(id) },
                 { $set: { ...data } },
             );
-            console.log(result);
+            // console.log(result);
+            res.json(result);
+        });
+        app.get("/api/all-transactions", async (req, res) => {
+            const result = await hiringCollection
+                .find({
+                    paymentStatus: "paid",
+                })
+                .toArray();
             res.json(result);
         });
         console.log(
