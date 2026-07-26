@@ -5,6 +5,7 @@ var cors = require("cors");
 const app = express();
 require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const { createRemoteJWKSet, jwtVerify } = require("jose-cjs");
 const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
@@ -17,6 +18,27 @@ const client = new MongoClient(uri, {
         deprecationErrors: true,
     },
 });
+const JWKS = createRemoteJWKSet(
+    new URL(`${process.env.CLIENT_URL}/api/auth/jwks`),
+);
+const verifyToken = async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer")) {
+        res.status(401).send({ message: "Unauthorized" });
+    }
+    const token = authHeader.split(" ")[1];
+    if (!token) {
+        res.status(401).send({ msg: "Unauthorized" });
+    }
+    try {
+        const { payload } = await jwtVerify(token, JWKS);
+        console.log(payload);
+        next();
+    } catch (error) {
+        console.log(error);
+        res.status(401).send({ msg: "Unauthorized" });
+    }
+};
 
 async function run() {
     try {
@@ -74,6 +96,7 @@ async function run() {
         app.get("/api/lawyer/:email", async (req, res) => {
             try {
                 const email = req.params.email;
+
                 const result = await layerCollection
                     .find({ lawyerEmail: email })
                     .toArray();
@@ -92,7 +115,7 @@ async function run() {
                 console.log(error);
             }
         });
-        app.post("/api/lawyer", async (req, res) => {
+        app.post("/api/lawyer", verifyToken, async (req, res) => {
             try {
                 const service = req.body;
                 const lawyer = await usersCollection.findOne({
@@ -175,15 +198,7 @@ async function run() {
                 console.log(error);
             }
         });
-        app.patch("/api/updateLawyerStatus/:id", async (req, res) => {
-            const id = req.params.id;
-            const data = req.body;
-            const result = await layerCollection.updateOne(
-                { _id: new ObjectId(id) },
-                { ...data },
-            );
-            res.json(result);
-        });
+
         app.patch("/api/users/update-premium/:email", async (req, res) => {
             const email = req.params.email;
 
@@ -347,7 +362,7 @@ async function run() {
         });
         app.patch("/api/user/:id", async (req, res) => {
             const id = req.params.id;
-            console.log(id);
+            // console.log(id);
             const data = req.body;
             const result = await usersCollection.updateOne(
                 { _id: new ObjectId(id) },
@@ -356,7 +371,61 @@ async function run() {
             console.log(result);
             res.json(result);
         });
+        app.patch("/api/hirings/payment-success", async (req, res) => {
+            const { serviceId, transactionId, paymentStatus } = req.body;
+            console.log("serviceId:", serviceId, "body", req?.body);
 
+            const result = await hiringCollection.updateOne(
+                { serviceId },
+                {
+                    $set: {
+                        paymentStatus,
+                        transactionId,
+                    },
+                },
+            );
+
+            const lawyerResult = await layerCollection.updateOne(
+                {
+                    _id: new ObjectId(serviceId),
+                },
+                {
+                    $set: {
+                        status: "busy",
+                    },
+                },
+            );
+            // console.log("Hiring:", result);
+            //console.log("Lawyer:", lawyerResult);
+
+            res.json({
+                result,
+                lawyerResult,
+            });
+        });
+        app.get("/api/find/allusers", async (req, res) => {
+            const users = await usersCollection.find().toArray();
+            res.json(users);
+        });
+        app.delete("/api/delete/user/:id", async (req, res) => {
+            const id = req.params.id;
+            console.log("id", id);
+            const result = await usersCollection.deleteOne({
+                _id: new ObjectId(id),
+            });
+            // console.log(result);
+            res.json(result);
+        });
+        app.patch("/api/update/user/:id", async (req, res) => {
+            const id = req.params.id;
+            data = req.body;
+            const result = await usersCollection.updateOne(
+                { _id: new ObjectId(id) },
+                { $set: { ...data } },
+            );
+            console.log(result);
+            res.json(result);
+        });
         console.log(
             "Pinged your deployment. You successfully connected to MongoDB!",
         );
