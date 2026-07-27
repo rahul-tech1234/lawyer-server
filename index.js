@@ -24,15 +24,16 @@ const JWKS = createRemoteJWKSet(
 const verifyToken = async (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer")) {
-        res.status(401).send({ message: "Unauthorized" });
+        return res.status(401).send({ message: "Unauthorized" });
     }
     const token = authHeader.split(" ")[1];
+    console.log("token", token);
     if (!token) {
         res.status(401).send({ msg: "Unauthorized" });
     }
     try {
         const { payload } = await jwtVerify(token, JWKS);
-        console.log(payload);
+        console.log("payload", payload);
         next();
     } catch (error) {
         console.log(error);
@@ -52,7 +53,7 @@ async function run() {
         const layerProfileCollection = db.collection("lawyerProfiles");
         const hiringCollection = db.collection("hiring");
         //    profile create update get
-        app.get("/api/lawyerProfile/:email", async (req, res) => {
+        app.get("/api/lawyerProfile/:email", verifyToken, async (req, res) => {
             try {
                 const email = req.params.email;
                 //console.log("email", email);
@@ -64,7 +65,7 @@ async function run() {
                 console.log(error);
             }
         });
-        app.post("/api/lawyerProfile", async (req, res) => {
+        app.post("/api/lawyerProfile", verifyToken, async (req, res) => {
             try {
                 const Mypro = req.body;
                 const result = await layerProfileCollection.insertOne({
@@ -76,24 +77,29 @@ async function run() {
                 console.log(error);
             }
         });
-        app.patch("/api/lawyerProfile/:email", async (req, res) => {
-            try {
-                const email = req.params.email;
-                const updatePro = req.body;
-                const result = await layerProfileCollection.updateOne(
-                    {
-                        lawyerEmail: email,
-                    },
-                    {
-                        $set: { ...updatePro },
-                    },
-                );
-                res.json(result);
-            } catch (error) {
-                console.log(error);
-            }
-        });
-        app.get("/api/lawyer/:email", async (req, res) => {
+        app.patch(
+            "/api/lawyerProfile/:email",
+            verifyToken,
+
+            async (req, res) => {
+                try {
+                    const email = req.params.email;
+                    const updatePro = req.body;
+                    const result = await layerProfileCollection.updateOne(
+                        {
+                            lawyerEmail: email,
+                        },
+                        {
+                            $set: { ...updatePro },
+                        },
+                    );
+                    res.json(result);
+                } catch (error) {
+                    console.log(error);
+                }
+            },
+        );
+        app.get("/api/lawyer/:email", verifyToken, async (req, res) => {
             try {
                 const email = req.params.email;
 
@@ -103,7 +109,7 @@ async function run() {
                 res.json(result);
             } catch (error) {}
         });
-        app.get("/api/lawyers/:id", async (req, res) => {
+        app.get("/api/lawyers/:id", verifyToken, async (req, res) => {
             try {
                 const id = req.params.id;
 
@@ -133,7 +139,7 @@ async function run() {
                 res.json(result);
             } catch (error) {}
         });
-        app.patch("/api/lawyer/:id", async (req, res) => {
+        app.patch("/api/lawyer/:id", verifyToken, async (req, res) => {
             try {
                 const id = req.params.id;
                 // console.log(id);
@@ -149,7 +155,7 @@ async function run() {
                 console.log(error);
             }
         });
-        app.delete("/api/lawyer/:id", async (req, res) => {
+        app.delete("/api/lawyer/:id", verifyToken, async (req, res) => {
             try {
                 const id = req.params.id;
                 const dltData = req.body;
@@ -161,6 +167,15 @@ async function run() {
             } catch (error) {
                 console.log(error);
             }
+        });
+        app.get("/api/newest/lawyers", async (req, res) => {
+            const result = await layerCollection
+                .find()
+                .sort({ _id: -1 })
+                .limit(6)
+                .toArray();
+            console.log("result", result);
+            res.json(result);
         });
         // browse all lawyer service
         app.get("/api/lawyers", async (req, res) => {
@@ -199,16 +214,20 @@ async function run() {
             }
         });
 
-        app.patch("/api/users/update-premium/:email", async (req, res) => {
-            const email = req.params.email;
+        app.patch(
+            "/api/users/update-premium/:email",
 
-            const result = await usersCollection.updateOne(
-                { email },
-                { $set: { isPremium: true } },
-            );
-            res.json(result);
-        });
-        app.get("/api/hirings/lawyer/:email", async (req, res) => {
+            async (req, res) => {
+                const email = req.params.email;
+
+                const result = await usersCollection.updateOne(
+                    { email },
+                    { $set: { isPremium: true } },
+                );
+                res.json(result);
+            },
+        );
+        app.get("/api/hirings/lawyer/:email", verifyToken, async (req, res) => {
             const email = req.params.email;
             // console.log(req.params);
             const result = await hiringCollection
@@ -216,7 +235,7 @@ async function run() {
                 .toArray();
             res.json(result);
         });
-        app.get("/api/hirings/client/:email", async (req, res) => {
+        app.get("/api/hirings/client/:email", verifyToken, async (req, res) => {
             const email = req.params.email;
             //console.log("email:", email);
             const result = await hiringCollection
@@ -225,7 +244,7 @@ async function run() {
 
             res.json(result);
         });
-        app.patch("/api/cmt/hireing/:id", async (req, res) => {
+        app.patch("/api/cmt/hireing/:id", verifyToken, async (req, res) => {
             const id = req.params.id;
             console.log(id);
             const data = req.body;
@@ -238,18 +257,22 @@ async function run() {
             res.json(result);
         });
 
-        app.get("/api/all/cmt/hireing/:email", async (req, res) => {
-            const email = req.params.email;
-            //   console.log(id);
-            const result = await layerCollection
-                .find({
-                    clientEmail: email,
-                })
-                .toArray();
-            console.log("result:", result);
-            res.json(result);
-        });
-        app.patch("/api/cmt/delete/:id", async (req, res) => {
+        app.get(
+            "/api/all/cmt/hireing/:email",
+            verifyToken,
+            async (req, res) => {
+                const email = req.params.email;
+                //   console.log(id);
+                const result = await layerCollection
+                    .find({
+                        clientEmail: email,
+                    })
+                    .toArray();
+                console.log("result:", result);
+                res.json(result);
+            },
+        );
+        app.patch("/api/cmt/delete/:id", verifyToken, async (req, res) => {
             const { id } = req.params;
             //console.log("delete Cmt", id);
             const result = await layerCollection.updateOne(
@@ -264,7 +287,7 @@ async function run() {
             console.log(result);
             res.json(result);
         });
-        app.patch("/api/cmt/update/:id", async (req, res) => {
+        app.patch("/api/cmt/update/:id", verifyToken, async (req, res) => {
             const id = req.params.id;
             const data = req.body;
             console.log("delete Cmt", id);
@@ -278,7 +301,7 @@ async function run() {
             res.json(result);
         });
 
-        app.get("/api/get/cmt/hireing/:id", async (req, res) => {
+        app.get("/api/get/cmt/hireing/:id", verifyToken, async (req, res) => {
             const id = req.params.id;
             //console.log(id);
             const result = await layerCollection.findOne({
@@ -288,7 +311,7 @@ async function run() {
             res.json(result);
         });
 
-        app.post("/api/hirings", async (req, res) => {
+        app.post("/api/hirings", verifyToken, async (req, res) => {
             const {
                 clientEmail,
                 clientId,
@@ -338,7 +361,7 @@ async function run() {
             // res.json({ success: true, message: "Lawyer hire successfull" });
         });
 
-        app.patch("/api/hirings/accept/:id", async (req, res) => {
+        app.patch("/api/hirings/accept/:id", verifyToken, async (req, res) => {
             const id = req.params.id;
 
             console.log("id", id);
@@ -349,7 +372,7 @@ async function run() {
             );
             res.json(result);
         });
-        app.patch("/api/hirings/reject/:id", async (req, res) => {
+        app.patch("/api/hirings/reject/:id", verifyToken, async (req, res) => {
             const id = req.params.id;
 
             console.log("id", id);
@@ -360,7 +383,7 @@ async function run() {
             );
             res.json(result);
         });
-        app.patch("/api/user/:id", async (req, res) => {
+        app.patch("/api/user/:id", verifyToken, async (req, res) => {
             const id = req.params.id;
             // console.log(id);
             const data = req.body;
@@ -371,43 +394,47 @@ async function run() {
             console.log(result);
             res.json(result);
         });
-        app.patch("/api/hirings/payment-success", async (req, res) => {
-            const { serviceId, transactionId, paymentStatus } = req.body;
-            console.log("serviceId:", serviceId, "body", req?.body);
+        app.patch(
+            "/api/hirings/payment-success",
 
-            const result = await hiringCollection.updateOne(
-                { serviceId },
-                {
-                    $set: {
-                        paymentStatus,
-                        transactionId,
+            async (req, res) => {
+                const { serviceId, transactionId, paymentStatus } = req.body;
+                console.log("serviceId:", serviceId, "body", req?.body);
+
+                const result = await hiringCollection.updateOne(
+                    { serviceId },
+                    {
+                        $set: {
+                            paymentStatus,
+                            transactionId,
+                        },
                     },
-                },
-            );
+                );
 
-            const lawyerResult = await layerCollection.updateOne(
-                {
-                    _id: new ObjectId(serviceId),
-                },
-                {
-                    $set: {
-                        status: "busy",
+                const lawyerResult = await layerCollection.updateOne(
+                    {
+                        _id: new ObjectId(serviceId),
                     },
-                },
-            );
-            // console.log("Hiring:", result);
-            //console.log("Lawyer:", lawyerResult);
+                    {
+                        $set: {
+                            status: "busy",
+                        },
+                    },
+                );
+                // console.log("Hiring:", result);
+                //console.log("Lawyer:", lawyerResult);
 
-            res.json({
-                result,
-                lawyerResult,
-            });
-        });
-        app.get("/api/find/allusers", async (req, res) => {
+                res.json({
+                    result,
+                    lawyerResult,
+                });
+            },
+        );
+        app.get("/api/find/allusers", verifyToken, async (req, res) => {
             const users = await usersCollection.find().toArray();
             res.json(users);
         });
-        app.delete("/api/delete/user/:id", async (req, res) => {
+        app.delete("/api/delete/user/:id", verifyToken, async (req, res) => {
             const id = req.params.id;
             //  console.log("id", id);
             const result = await usersCollection.deleteOne({
@@ -416,7 +443,7 @@ async function run() {
             // console.log(result);
             res.json(result);
         });
-        app.patch("/api/update/user/:id", async (req, res) => {
+        app.patch("/api/update/user/:id", verifyToken, async (req, res) => {
             const id = req.params.id;
             data = req.body;
             const result = await usersCollection.updateOne(
@@ -426,12 +453,77 @@ async function run() {
             // console.log(result);
             res.json(result);
         });
-        app.get("/api/all-transactions", async (req, res) => {
+        app.get("/api/all-transactions", verifyToken, async (req, res) => {
             const result = await hiringCollection
                 .find({
                     paymentStatus: "paid",
                 })
                 .toArray();
+            res.json(result);
+        });
+        app.get("/api/admin/analytics", verifyToken, async (req, res) => {
+            const totalUsers = await usersCollection.countDocuments();
+            const totalLawyers = await usersCollection.countDocuments({
+                role: "lawyer",
+            });
+            const totalClients = await usersCollection.countDocuments({
+                role: "client",
+            });
+            const revenue = await hiringCollection
+                .aggregate([
+                    {
+                        $match: {
+                            paymentStatus: "paid",
+                        },
+                    },
+                    {
+                        $group: {
+                            _id: null,
+                            totalRevenue: {
+                                $sum: {
+                                    $toDouble: "$consultationFee",
+                                },
+                            },
+                        },
+                    },
+                ])
+                .toArray();
+
+            const totalRevenue = revenue[0]?.totalRevenue || 0;
+            console.log(`totalRevenue ${totalRevenue} `);
+            res.json({
+                totalUsers,
+                totalLawyers,
+                totalClients,
+                totalRevenue,
+            });
+        });
+        app.get("/api/top-lawyers", async (req, res) => {
+            const result = await hiringCollection
+                .aggregate([
+                    {
+                        $match: {
+                            paymentStatus: "paid",
+                        },
+                    },
+                    {
+                        $group: {
+                            _id: "$serviceEmail",
+                            category: { $first: "$category" },
+                            totalHires: { $sum: 1 },
+                        },
+                    },
+                    {
+                        $sort: {
+                            totalHires: -1,
+                        },
+                    },
+                    {
+                        $limit: 3,
+                    },
+                ])
+                .toArray();
+
             res.json(result);
         });
         console.log(
