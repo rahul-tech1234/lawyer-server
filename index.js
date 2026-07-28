@@ -180,7 +180,7 @@ async function run() {
         // browse all lawyer service
         app.get("/api/lawyers", async (req, res) => {
             try {
-                const limit = Number(req.query.limiy) || 5;
+                const limit = Number(req.query.limiy) || 9;
                 const page = Number(req.query.page) || 1;
                 const total_data = await layerCollection.countDocuments();
                 const total_page = Math.ceil(total_data / limit);
@@ -189,7 +189,10 @@ async function run() {
                 const search = req.query.search;
                 const query = {};
                 if (search) {
-                    query.title = { $regex: search, $options: "i" };
+                    query.$or = [
+                        { title: { $regex: search, $options: "i" } },
+                        { des: { $regex: search, $options: "i" } },
+                    ];
                 }
                 if (category) {
                     query.category = category;
